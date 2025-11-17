@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Hand Mouse + Speech Typing</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:16px; }
+    .controls { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+    .box { border:1px solid #ddd; padding:12px; border-radius:8px; }
+    button { padding:8px 12px; cursor:pointer; }
+    #recognized { width:100%; height:160px; }
+    .small { font-size:0.9rem; color:#666; }
+  </style>
+  <script type="text/javascript" src="/eel.js"></script>
+</head>
+<body>
+  <h2>Hand Mouse + Speech Typing</h2>
+
+  <div class="controls box">
+    <div>
+      <label><input id="mouseToggle" type="checkbox" checked> Mouse control</label>
+    </div>
+    <div>
+      <label><input id="speechToggle" type="checkbox"> Speech-to-text</label>
+    </div>
+    <div>
+      <label><input id="autoTypeToggle" type="checkbox" checked> Auto-type recognized text</label>
+    </div>
+    <div class="small">Note: when Auto-type is enabled, recognized text will be typed into the active window.</div>
+  </div>
+
+  <div class="box">
+    <h4>Hand position</h4>
+    <div id="handInfo">Waiting for camera...</div>
+  </div>
+
+  <div class="box" style="margin-top:12px">
+    <h4>Speech recognition</h4>
+    <textarea id="recognized" readonly placeholder="Recognized speech will appear here..."></textarea>
+    <div class="small" id="speechStatus">Microphone status: off</div>
+  </div>
+
+  <script>
+    const mouseToggle = document.getElementById('mouseToggle');
+    const speechToggle = document.getElementById('speechToggle');
+    const handInfo = document.getElementById('handInfo');
+    const recognizedArea = document.getElementById('recognized');
+    const speechStatus = document.getElementById('speechStatus');
+    const autoTypeToggle = document.getElementById('autoTypeToggle');
+
+    mouseToggle.addEventListener('change', () => {
+      eel.toggle_mouse_control(mouseToggle.checked)().then(ret => {
+        // optional: reflect any return value
+      });
+    });
+
+    speechToggle.addEventListener('change', () => {
+      const val = speechToggle.checked;
+      eel.toggle_speech_control(val)().then(ret => {
+        speechStatus.innerText = "Microphone status: " + (ret ? "on" : "off");
+      });
+    });
+
+    autoTypeToggle.addEventListener('change', () => {
+      eel.toggle_auto_type(autoTypeToggle.checked)();
+    });
+
+    // poll for hand position and recognized text
+    setInterval(() => {
+      eel.get_hand_pos()(pos => {
+        if (pos.visible) {
+          handInfo.innerText = `x: ${pos.x}, y: ${pos.y} (visible)`;
+        } else {
+          handInfo.innerText = "No hand detected";
+        }
+      });
+
+      eel.get_recognized_text()(txt => {
+        if (txt) {
+          // put latest text in textarea (append)
+          recognizedArea.value = txt + "\n" + recognizedArea.value;
+          // keep a reasonable length
+          recognizedArea.value = recognizedArea.value.split("\n").slice(0,200).join("\n");
+        }
+      });
+    }, 600);
+  </script>
+</body>
+</html>
