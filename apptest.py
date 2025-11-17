@@ -43,6 +43,32 @@ cap = cv2.VideoCapture(0)
 # -----------------------------
 recognizer = sr.Recognizer()
 
+def recognize_speech_once(timeout=3, phrase_time_limit=6):
+    """
+    Listen once on the microphone and return recognized text.
+    Returns a string, or an error message wrapped in [brackets] if something goes wrong.
+    """
+    try:
+        with sr.Microphone() as source:
+            # reduce background noise influence
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            print("Listening...")
+            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
+    except sr.WaitTimeoutError:
+        return "[no speech detected - timeout]"
+    except Exception as e:
+        return f"[mic error: {e}]"
+
+    try:
+        text = recognizer.recognize_google(audio)
+        print("Recognized:", text)
+        return text
+    except sr.UnknownValueError:
+        return "[unintelligible]"
+    except sr.RequestError as e:
+        return f"[speech API error: {e}]"
+
+
 def speech_thread_func():
     global speech_control_enabled, recognized_text, auto_type_enabled
     # We'll open and close the microphone stream repeatedly to allow toggling
@@ -51,32 +77,16 @@ def speech_thread_func():
             time.sleep(0.2)
             continue
 
-        try:
-            with sr.Microphone() as source:
-                # calibrate ambient noise briefly
-                recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                # listen for a short phrase (phrase_time_limit can be adjusted)
-                audio = recognizer.listen(source, phrase_time_limit=6)
-                # attempt recognition (Google Web Speech API)
-                try:
-                    text = recognizer.recognize_google(audio)
-                    # update shared text for UI
-                    recognized_text = text
-                    # If auto typing is enabled, type to the currently focused window
-                    if auto_type_enabled:
-                        # pyautogui types relatively slowly to avoid missing keys on some systems
-                        pyautogui.write(text + " ", interval=0.02)
-                except sr.UnknownValueError:
-                    # couldn't understand audio
-                    recognized_text = "[unintelligible]"
-                except sr.RequestError as e:
-                    # network / API error
-                    recognized_text = f"[speech API error: {e}]"
-        except Exception as e:
-            # microphone not available or other error; keep thread alive
-            recognized_text = f"[mic error: {e}]"
-            # avoid tight loop if mic failing
-            time.sleep(1)
+        # use the reusable one-shot recognizer
+        text = recognize_speech_once(timeout=3, phrase_time_limit=6)
+        recognized_text = text
+
+        # only auto type if it is a real phrase, not an error message
+        if auto_type_enabled and not text.startswith("["):
+            pyautogui.write(text + " ", interval=0.02)
+
+        # small pause to avoid hammering the mic
+        time.sleep(0.2)
 
 # -----------------------------
 # Hand tracking thread
@@ -160,8 +170,10 @@ def get_hand_pos():
 
 @eel.expose
 def get_recognized_text():
-    # UI can poll this to show last recognized phrase
-    return recognized_text
+    global recognized_text
+    text = recognized_text   # copy current value
+    recognized_text = ""     # clear it so it is not returned again
+    return text
 
 # -----------------------------
 # Start background threads
