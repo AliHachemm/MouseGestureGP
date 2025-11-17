@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hand & Voice Control System - Presentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .presentation-container {
+            width: 90vw;
+            height: 90vh;
+            max-width: 1400px;
+            max-height: 800px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .slide-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .slide-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        .slide-subtitle {
+            font-size: 1.5rem;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .feature-description {
+            font-size: 1rem;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .content-section {
+            background: #f8f9fa;
+            padding: 35px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 5px solid #667eea;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-text {
+            font-size: 1.1rem;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .tech-stack {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .tech-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .bullet-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .bullet-list li {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 15px;
+            padding-left: 35px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .bullet-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .navigation {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            background: #f8f9fa;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .architecture-diagram {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        .arch-box {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            min-width: 180px;
+        }
+
+        .arch-box-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .arch-box-text {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .arrow {
+            font-size: 2rem;
+            color: #667eea;
+        }
+
+        .use-case-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .use-case-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .use-case-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .use-case-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .use-case-text {
+            font-size: 0.95rem;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Title Slide Specific */
+        #slide1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        #slide1 .slide-title {
+            -webkit-text-fill-color: white;
+            font-size: 4rem;
+            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #slide1 .slide-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.8rem;
+        }
+
+        #slide1 .intro-text {
+            font-size: 1.3rem;
+            margin-top: 30px;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .highlight-box {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 40px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Slide 1: Title & Overview -->
+        <div class="slide active" id="slide1">
+            <div class="slide-header">
+                <div class="slide-title">AI Hand & Voice Control System</div>
+                <div class="slide-subtitle">Next-Generation Desktop Automation</div>
+            </div>
+            <div class="slide-content">
+                <p class="intro-text">
+                    A revolutionary Python-based desktop automation tool that enables users to control their computer using intuitive hand gestures and natural voice commands.
+                </p>
+                <div class="highlight-box">
+                    <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 15px;">🚀 Key Technologies</div>
+                    <div class="tech-stack" style="justify-content: center;">
+                        <div class="tech-badge">Python</div>
+                        <div class="tech-badge">OpenCV</div>
+                        <div class="tech-badge">MediaPipe</div>
+                        <div class="tech-badge">Google Speech Recognition</div>
+                        <div class="tech-badge">Eel Framework</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Hand Tracking Feature -->
+        <div class="slide" id="slide2">
+            <div class="slide-header">
+                <div class="slide-title">Hand Tracking Feature</div>
+                <div class="slide-subtitle">Gesture-Based Mouse Control</div>
+            </div>
+            <div class="slide-content">
+                <div class="content-section">
+                    <div class="section-title">
+                        <span>👆</span>
+                        <span>How It Works</span>
+                    </div>
+                    <div class="section-text">
+                        The system leverages OpenCV and MediaPipe to create a sophisticated hand-tracking interface that translates physical gestures into precise computer control.
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📹</div>
+                        <div class="feature-title">Real-Time Detection</div>
+                        <div class="feature-description">Captures video feed and detects a single hand using MediaPipe's machine learning models</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎯</div>
+                        <div class="feature-title">Index Finger Tracking</div>
+                        <div class="feature-description">Tracks the index finger position in 3D space and maps it to screen coordinates</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🖱️</div>
+                        <div class="feature-title">Cursor Movement</div>
+                        <div class="feature-description">Smoothly moves the mouse cursor based on finger position with precision control</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🤏</div>
+                        <div class="feature-title">Pinch Gesture Click</div>
+                        <div class="feature-description">Detects pinch gesture (thumb + index finger) to trigger mouse clicks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Speech Recognition Feature -->
+        <div class="slide" id="slide3">
+            <div class="slide-header">
+                <div class="slide-title">Speech Recognition Feature</div>
+                <div class="slide-subtitle">Voice-Powered Text Input</div>
+            </div>
+            <div class="slide-content">
+                <div class="content-section">
+                    <div class="section-title">
+                        <span>🎤</span>
+                        <span>Speech-to-Text System</span>
+                    </div>
+                    <div class="section-text">
+                        An intelligent voice recognition system that converts spoken words into text, enabling hands-free typing and voice commands.
+                    </div>
+                </div>
+                <ul class="bullet-list">
+                    <li><strong>Microphone Integration:</strong> Continuously listens through the system microphone for voice input</li>
+                    <li><strong>Google Speech Recognition API:</strong> Utilizes Google's powerful speech recognition engine to accurately transcribe spoken phrases into text</li>
+                    <li><strong>Real-Time Processing:</strong> Processes audio in real-time with minimal latency for immediate feedback</li>
+                    <li><strong>Auto-Typing Feature:</strong> Optionally types recognized text directly into any active window or application</li>
+                    <li><strong>Multi-Language Support:</strong> Capable of recognizing multiple languages and accents</li>
+                    <li><strong>Error Handling:</strong> Gracefully handles background noise and unclear speech with retry mechanisms</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 4: Architecture -->
+        <div class="slide" id="slide4">
+            <div class="slide-header">
+                <div class="slide-title">System Architecture</div>
+                <div class="slide-subtitle">Background Processes & Design</div>
+            </div>
+            <div class="slide-content">
+                <div class="content-section">
+                    <div class="section-title">
+                        <span>⚙️</span>
+                        <span>Multithreaded Architecture</span>
+                    </div>
+                    <div class="section-text">
+                        The system employs a sophisticated multithreaded architecture to enable simultaneous hand tracking and speech recognition without performance degradation.
+                    </div>
+                </div>
+                <div class="architecture-diagram">
+                    <div class="arch-box">
+                        <div class="arch-box-title">🎥 Hand Tracking Thread</div>
+                        <div class="arch-box-text">OpenCV + MediaPipe<br>Continuous gesture detection</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="arch-box">
+                        <div class="arch-box-title">🐍 Python Backend</div>
+                        <div class="arch-box-text">Thread coordination<br>Event handling</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="arch-box">
+                        <div class="arch-box-title">🌐 Web UI (Eel)</div>
+                        <div class="arch-box-text">Real-time display<br>User controls</div>
+                    </div>
+                </div>
+                <div class="architecture-diagram" style="margin-top: 20px;">
+                    <div class="arch-box">
+                        <div class="arch-box-title">🎤 Speech Recognition Thread</div>
+                        <div class="arch-box-text">Google Speech API<br>Audio processing</div>
+                    </div>
+                    <div class="arrow">↗</div>
+                    <div style="width: 180px;"></div>
+                    <div class="arrow">↖</div>
+                    <div class="arch-box">
+                        <div class="arch-box-title">💾 Shared State</div>
+                        <div class="arch-box-text">Thread-safe data<br>Status updates</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: User Interface -->
+        <div class="slide" id="slide5">
+            <div class="slide-header">
+                <div class="slide-title">User Controls & Interface</div>
+                <div class="slide-subtitle">Intuitive Web-Based Dashboard</div>
+            </div>
+            <div class="slide-content">
+                <div class="content-section">
+                    <div class="section-title">
+                        <span>🎛️</span>
+                        <span>Control Panel Features</span>
+                    </div>
+                    <div class="section-text">
+                        A modern web-based interface built with Eel that provides seamless control over all system features with real-time feedback.
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🖱️</div>
+                        <div class="feature-title">Mouse Control Toggle</div>
+                        <div class="feature-description">Enable or disable hand-gesture mouse control with a single click</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎤</div>
+                        <div class="feature-title">Speech Control Toggle</div>
+                        <div class="feature-description">Activate or deactivate voice recognition on demand</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⌨️</div>
+                        <div class="feature-title">Auto-Typing Toggle</div>
+                        <div class="feature-description">Control whether recognized speech is automatically typed</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-title">Real-Time Display</div>
+                        <div class="feature-description">Live visualization of hand position coordinates and recognized speech text</div>
+                    </div>
+                </div>
+                <div class="content-section" style="margin-top: 25px;">
+                    <div class="section-text" style="text-align: center; font-weight: 600;">
+                        🌐 Built with Eel framework for seamless Python-JavaScript communication
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Use Cases -->
+        <div class="slide" id="slide6">
+            <div class="slide-header">
+                <div class="slide-title">Use Cases & Benefits</div>
+                <div class="slide-subtitle">Real-World Applications</div>
+            </div>
+            <div class="slide-content">
+                <div class="use-case-grid">
+                    <div class="use-case-card">
+                        <div class="use-case-icon">♿</div>
+                        <div class="use-case-title">Accessibility</div>
+                        <div class="use-case-text">Empowers users with mobility impairments to control computers using voice and simple hand gestures, promoting digital inclusion</div>
+                    </div>
+                    <div class="use-case-card">
+                        <div class="use-case-icon">🙌</div>
+                        <div class="use-case-title">Hands-Free Computing</div>
+                        <div class="use-case-text">Perfect for scenarios where hands are occupied (cooking, medical procedures, manufacturing) or when hygiene is critical</div>
+                    </div>
+                    <div class="use-case-card">
+                        <div class="use-case-icon">🎮</div>
+                        <div class="use-case-title">Gesture-Based Interaction</div>
+                        <div class="use-case-text">Creates immersive experiences for presentations, gaming, virtual reality, and interactive installations</div>
+                    </div>
+                    <div class="use-case-card">
+                        <div class="use-case-icon">⚡</div>
+                        <div class="use-case-title">Enhanced Productivity</div>
+                        <div class="use-case-text">Speeds up workflows with voice commands for repetitive tasks, reduces RSI from mouse usage, and enables multitasking</div>
+                    </div>
+                </div>
+                <div class="content-section" style="margin-top: 30px;">
+                    <div class="section-title" style="justify-content: center;">
+                        <span>🎯</span>
+                        <span>Key Benefits</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div class="tech-badge">Natural Interaction</div>
+                        <div class="tech-badge">Reduced Physical Strain</div>
+                        <div class="tech-badge">Increased Accessibility</div>
+                        <div class="tech-badge">Future-Ready Technology</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+            <span class="slide-counter"><span id="currentSlide">1</span> / 6</span>
+            <button class="nav-button" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 6;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) {
+                currentSlide = totalSlides;
+            }
+            if (n < 1) {
+                currentSlide = 1;
+            }
+            
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+            });
+            
+            slides[currentSlide - 1].classList.add('active');
+            document.getElementById('currentSlide').textContent = currentSlide;
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            showSlide(currentSlide);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                if (currentSlide < totalSlides) {
+                    changeSlide(1);
+                }
+            } else if (e.key === 'ArrowLeft') {
+                if (currentSlide > 1) {
+                    changeSlide(-1);
+                }
+            }
+        });
+
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>
