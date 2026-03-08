@@ -1,4 +1,3 @@
-# apptest.py
 import eel
 import cv2
 import mediapipe as mp
@@ -7,196 +6,296 @@ import threading
 import time
 import math
 import speech_recognition as sr
+from gtts import gTTS
+import playsound
+import os
 
-# -----------------------------
-# Config / global state
-# -----------------------------
-WEB_FOLDER = 'web'
-INDEX_PAGE = 'index.html'
+# =============================
+# CONFIG
+# =============================
 SCREEN_W, SCREEN_H = pyautogui.size()
+EMA_ALPHA = 0.3
+DEAD_ZONE = 6
+PINCH_THRESHOLD = 35
+DRAG_HOLD_TIME = 0.18
 
-# control flags (shared between UI and threads)
-mouse_control_enabled = True
-speech_control_enabled = False
-auto_type_enabled = True  # when True, recognized speech will be typed into the active window
-recognized_text = ""      # latest recognized text (for UI display)
+# =============================
+# GLOBAL STATE
+# =============================
+mouse_enabled = True
+speech_enabled = False
+auto_type_enabled = True
 
-# hand position shared state
+recognized_text = ""
+gesture_state = "idle"
+
 current_pos = {"x": 0, "y": 0, "visible": False}
 
-# -----------------------------
-# Setup Eel
-# -----------------------------
-eel.init(WEB_FOLDER)
+prev_x, prev_y = SCREEN_W // 2, SCREEN_H // 2
+pinch_start = 0
+is_dragging = False
 
-# -----------------------------
-# Mediapipe hand tracker setup
-# -----------------------------
+lock = threading.Lock()
+
+# =============================
+# EEL INIT
+# =============================
+eel.init("web")
+
+# =============================
+# MEDIAPIPE SETUP
+# =============================
 mp_hands = mp.solutions.hands
-mp_draw = mp.solutions.drawing_utils
-hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
-
+hands = mp_hands.Hands(
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
 cap = cv2.VideoCapture(0)
 
-# -----------------------------
-# Speech recognition setup
-# -----------------------------
+# =============================
+# SPEECH SETUP
+# =============================
 recognizer = sr.Recognizer()
+recognizer.energy_threshold = 300
+recognizer.dynamic_energy_threshold = True
 
-def recognize_speech_once(timeout=3, phrase_time_limit=6):
-    """
-    Listen once on the microphone and return recognized text.
-    Returns a string, or an error message wrapped in [brackets] if something goes wrong.
-    """
+
+def handle_speech_command(text):
+    global mouse_enabled
+
+    t = text.lower().strip()
+
+    # Wake word
+    if not t.startswith("computer"):
+        return None
+
+    t = t.replace("computer", "").strip()
+
+    if t == "click":
+        pyautogui.click()
+        speak("Click")
+        return "[command] click"
+
+    if t == "double click":
+        pyautogui.doubleClick()
+        speak("Double click")
+        return "[command] double click"
+
+    if t == "scroll down":
+        pyautogui.scroll(-400)
+        speak("Scrolling down")
+        return "[command] scroll down"
+
+    if t == "scroll up":
+        pyautogui.scroll(400)
+        speak("Scrolling up")
+        return "[command] scroll up"
+
+    if t == "stop mouse":
+        mouse_enabled = False
+        speak("Mouse control disabled")
+        return "[command] mouse disabled"
+
+    if t == "start mouse":
+        mouse_enabled = True
+        speak("Mouse control enabled")
+        return "[command] mouse enabled"
+
+    if t == "open chrome":
+        os.system("start chrome")
+        speak("Opening Chrome")
+        return "[command] opening chrome"
+
+    if t == "open notepad":
+        os.system("start notepad")
+        speak("Opening Notepad")
+        return "[command] opening notepad"
+
+    if t == "volume up":
+        pyautogui.press("volumeup")
+        speak("Volume up")
+        return "[command] volume up"
+
+    if t == "volume down":
+        pyautogui.press("volumedown")
+        speak("Volume down")
+        return "[command] volume down"
+
+    if t == "mute":
+        pyautogui.press("volumemute")
+        speak("Muted")
+        return "[command] mute"
+
+    if t == "take screenshot":
+        pyautogui.screenshot("screenshot.png")
+        speak("Screenshot taken")
+        return "[command] screenshot taken"
+
+    return None
+
+# =============================
+# VOICE FEEDBACK
+# =============================
+def speak(text):
     try:
-        with sr.Microphone() as source:
-            # reduce background noise influence
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            print("Listening...")
-            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
-    except sr.WaitTimeoutError:
-        return "[no speech detected - timeout]"
-    except Exception as e:
-        return f"[mic error: {e}]"
-
-    try:
-        text = recognizer.recognize_google(audio)
-        print("Recognized:", text)
-        return text
-    except sr.UnknownValueError:
-        return "[unintelligible]"
-    except sr.RequestError as e:
-        return f"[speech API error: {e}]"
+        tts = gTTS(text)
+        tts.save("assistant_voice.mp3")
+        playsound.playsound("assistant_voice.mp3")
+        os.remove("assistant_voice.mp3")
+    except:
+        pass
 
 
-def speech_thread_func():
-    global speech_control_enabled, recognized_text, auto_type_enabled
-    # We'll open and close the microphone stream repeatedly to allow toggling
+# =============================
+# SPEECH THREAD (FIXED)
+# =============================
+def speech_thread():
+    global recognized_text
+
+    print("🎤 Speech thread started")
+
     while True:
-        if not speech_control_enabled:
+        if not speech_enabled:
             time.sleep(0.2)
             continue
 
-        # use the reusable one-shot recognizer
-        text = recognize_speech_once(timeout=3, phrase_time_limit=6)
-        recognized_text = text
+        try:
+            with sr.Microphone() as source:
+                recognizer.adjust_for_ambient_noise(source, duration=0.2)
+                audio = recognizer.listen(source, phrase_time_limit=5)
 
-        # only auto type if it is a real phrase, not an error message
-        if auto_type_enabled and not text.startswith("["):
-            pyautogui.write(text + " ", interval=0.02)
+            text = recognizer.recognize_google(audio)
+            print("Recognized:", text)
 
-        # small pause to avoid hammering the mic
-        time.sleep(0.2)
+            command = handle_speech_command(text)
 
-# -----------------------------
-# Hand tracking thread
-# -----------------------------
-def track_hand():
-    global current_pos, mouse_control_enabled
-    last_click_time = 0
+            with lock:
+                recognized_text = command if command else text
+
+            if auto_type_enabled and not command:
+                pyautogui.write(text + " ", interval=0.02)
+
+        except sr.UnknownValueError:
+            pass
+        except sr.RequestError:
+            with lock:
+                recognized_text = "[speech api error]"
+        except Exception as e:
+            print("Speech error:", e)
+
+
+# =============================
+# HAND TRACKING THREAD
+# =============================
+def hand_thread():
+    global prev_x, prev_y, pinch_start, is_dragging, gesture_state
+
     while True:
-        success, frame = cap.read()
-        if not success:
-            time.sleep(0.01)
+        ret, frame = cap.read()
+        if not ret:
             continue
 
-        frame = cv2.flip(frame, 1)  # mirror
+        frame = cv2.flip(frame, 1)
         h, w, _ = frame.shape
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = hands.process(rgb)
+        res = hands.process(rgb)
 
-        if results.multi_hand_landmarks:
-            hand_landmarks = results.multi_hand_landmarks[0]
-            # index fingertip = landmark 8, middle fingertip = 12
-            ix = hand_landmarks.landmark[8].x
-            iy = hand_landmarks.landmark[8].y
-            mx = hand_landmarks.landmark[12].x
-            my = hand_landmarks.landmark[12].y
+        if res.multi_hand_landmarks:
+            lm = res.multi_hand_landmarks[0].landmark
+            ix, iy = lm[8].x, lm[8].y
+            mx, my = lm[12].x, lm[12].y
 
-            # convert to pixel coordinates
-            px = int(ix * w)
-            py = int(iy * h)
-            screen_x = int(ix * SCREEN_W)
-            screen_y = int(iy * SCREEN_H)
+            sx, sy = int(ix * SCREEN_W), int(iy * SCREEN_H)
 
-            current_pos["x"] = screen_x
-            current_pos["y"] = screen_y
-            current_pos["visible"] = True
+            if abs(sx - prev_x) < DEAD_ZONE and abs(sy - prev_y) < DEAD_ZONE:
+                continue
 
-            if mouse_control_enabled:
-                # move mouse (no smoothing here; add smoothing if needed)
-                pyautogui.moveTo(screen_x, screen_y)
+            smooth_x = int(EMA_ALPHA * sx + (1 - EMA_ALPHA) * prev_x)
+            smooth_y = int(EMA_ALPHA * sy + (1 - EMA_ALPHA) * prev_y)
 
-                # pinch detection for click (distance in pixels on camera frame)
-                dx = (px - int(mx * w))
-                dy = (py - int(my * h))
-                dist = math.hypot(dx, dy)
+            prev_x, prev_y = smooth_x, smooth_y
+            current_pos.update({"x": smooth_x, "y": smooth_y, "visible": True})
 
-                # click threshold (may need calibration)
-                if dist < 40 and (time.time() - last_click_time) > 0.3:
+            if mouse_enabled:
+                pyautogui.moveTo(smooth_x, smooth_y)
+
+            dist = math.hypot((ix - mx) * w, (iy - my) * h)
+            now = time.time()
+
+            if dist < PINCH_THRESHOLD:
+                if pinch_start == 0:
+                    pinch_start = now
+                elif now - pinch_start > DRAG_HOLD_TIME and not is_dragging:
+                    pyautogui.mouseDown()
+                    is_dragging = True
+                    gesture_state = "dragging"
+            else:
+                if is_dragging:
+                    pyautogui.mouseUp()
+                elif pinch_start != 0:
                     pyautogui.click()
-                    last_click_time = time.time()
+                    gesture_state = "click"
+
+                pinch_start = 0
+                is_dragging = False
         else:
             current_pos["visible"] = False
+            gesture_state = "no hand"
 
-        # small sleep to free CPU (tune as needed)
         time.sleep(0.01)
 
-# -----------------------------
-# Eel exposed functions (UI -> Python)
-# -----------------------------
+
+# =============================
+# EEL EXPOSED FUNCTIONS
+# =============================
 @eel.expose
-def toggle_mouse_control(enabled: bool):
-    global mouse_control_enabled
-    mouse_control_enabled = bool(enabled)
-    return mouse_control_enabled
+def toggle_mouse(v):
+    global mouse_enabled
+    mouse_enabled = bool(v)
+    print("Mouse enabled:", mouse_enabled)
+    return mouse_enabled
+
 
 @eel.expose
-def toggle_speech_control(enabled: bool):
-    global speech_control_enabled
-    speech_control_enabled = bool(enabled)
-    return speech_control_enabled
+def toggle_speech(v):
+    global speech_enabled
+    speech_enabled = bool(v)
+    print("Speech enabled:", speech_enabled)
+    return speech_enabled
+
 
 @eel.expose
-def toggle_auto_type(enabled: bool):
+def toggle_auto(v):
     global auto_type_enabled
-    auto_type_enabled = bool(enabled)
+    auto_type_enabled = bool(v)
     return auto_type_enabled
 
-@eel.expose
-def get_hand_pos():
-    # return dictionary for the UI to show
-    return current_pos
 
 @eel.expose
-def get_recognized_text():
-    global recognized_text
-    text = recognized_text   # copy current value
-    recognized_text = ""     # clear it so it is not returned again
-    return text
+def get_hand():
+    return {
+        "x": current_pos["x"],
+        "y": current_pos["y"],
+        "visible": current_pos["visible"],
+        "gesture": gesture_state
+    }
 
-# -----------------------------
-# Start background threads
-# -----------------------------
-t_hand = threading.Thread(target=track_hand, daemon=True)
-t_hand.start()
 
-t_speech = threading.Thread(target=speech_thread_func, daemon=True)
-t_speech.start()
+@eel.expose
+def get_text():
+    with lock:
+        return recognized_text
 
-# -----------------------------
-# Start Eel
-# -----------------------------
-try:
-    eel.start(INDEX_PAGE, size=(900, 600), block=False)
-    # keep the program alive so daemon threads run
-    while True:
-        eel.sleep(0.1)
-except (KeyboardInterrupt, SystemExit):
-    pass
-finally:
-    try:
-        cap.release()
-        hands.close()
-    except:
-        pass
+
+# =============================
+# THREADS
+# =============================
+threading.Thread(target=hand_thread, daemon=True).start()
+threading.Thread(target=speech_thread, daemon=True).start()
+
+# =============================
+# START APP
+# =============================
+eel.start("index.html", size=(900, 650), block=True)
+
