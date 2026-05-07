@@ -1,89 +1,163 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Hand Mouse + Speech Typing</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin:16px; }
-    .controls { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
-    .box { border:1px solid #ddd; padding:12px; border-radius:8px; }
-    button { padding:8px 12px; cursor:pointer; }
-    #recognized { width:100%; height:160px; }
-    .small { font-size:0.9rem; color:#666; }
-  </style>
-  <script type="text/javascript" src="/eel.js"></script>
+    <title>Computer Assistant</title>
+
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+            text-align: center;
+            padding: 30px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 15px;
+            width: 460px;
+            margin: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 8px;
+            background: #22c55e;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 8px;
+            border: none;
+            border-radius: 8px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .section {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .section h3 {
+            margin-bottom: 5px;
+        }
+
+        .section p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #cbd5f5;
+        }
+
+        .highlight {
+            color: #22c55e;
+        }
+    </style>
 </head>
+
 <body>
-  <h2>Hand Mouse + Speech Typing</h2>
 
-  <div class="controls box">
-    <div>
-      <label><input id="mouseToggle" type="checkbox" checked> Mouse control</label>
+    <h1>Computer Assistant</h1>
+
+    <div class="card">
+
+        <!-- STATUS -->
+        <div class="status">
+            <p id="gesture">Gesture: ...</p>
+            <p id="speech">Voice: <span class="badge">ON</span></p>
+            <p id="text">You said: ...</p>
+        </div>
+
+        <!-- CONTROLS -->
+        <button onclick="toggleSpeech()">Toggle Voice</button>
+        <button onclick="toggleMouse()">Toggle Mouse</button>
+
+        <!-- VOICE COMMANDS -->
+        <div class="section">
+            <h3>Voice Commands</h3>
+
+            <p><span class="highlight">computer click</span></p>
+            <p><span class="highlight">computer scroll up / down</span></p>
+
+            <p><span class="highlight">computer open chrome</span></p>
+            <p><span class="highlight">computer open notepad</span></p>
+            <p><span class="highlight">computer open files</span></p>
+            <p><span class="highlight">computer open word</span></p>
+            <p><span class="highlight">computer open powerpoint</span></p>
+
+            <p><span class="highlight">computer close chrome</span></p>
+            <p><span class="highlight">computer close spotify</span></p>
+
+            <p><span class="highlight">computer search google for X</span></p>
+            <p><span class="highlight">computer search youtube for X</span></p>
+
+            <p><span class="highlight">computer what is AI</span></p>
+        </div>
+
+        <!-- GESTURES -->
+        <div class="section">
+            <h3>Gestures</h3>
+
+            <p>☝ one finger → scroll up</p>
+            <p>✌ two fingers → scroll down</p>
+            <p>🤏 pinch → click</p>
+            <p>👉 swipe right → forward</p>
+            <p>👈 swipe left → back</p>
+            <p>☝ move finger → cursor</p>
+        </div>
+
     </div>
-    <div>
-      <label><input id="speechToggle" type="checkbox"> Speech-to-text</label>
-    </div>
-    <div>
-      <label><input id="autoTypeToggle" type="checkbox" checked> Auto-type recognized text</label>
-    </div>
-    <div class="small">Note: when Auto-type is enabled, recognized text will be typed into the active window.</div>
-  </div>
 
-  <div class="box">
-    <h4>Hand position</h4>
-    <div id="handInfo">Waiting for camera...</div>
-  </div>
+    <script src="/eel.js"></script>
 
-  <div class="box" style="margin-top:12px">
-    <h4>Speech recognition</h4>
-    <textarea id="recognized" readonly placeholder="Recognized speech will appear here..."></textarea>
-    <div class="small" id="speechStatus">Microphone status: off</div>
-  </div>
+    <script>
+        let speechOn = true;
+        let mouseOn = true;
 
-  <script>
-    const mouseToggle = document.getElementById('mouseToggle');
-    const speechToggle = document.getElementById('speechToggle');
-    const handInfo = document.getElementById('handInfo');
-    const recognizedArea = document.getElementById('recognized');
-    const speechStatus = document.getElementById('speechStatus');
-    const autoTypeToggle = document.getElementById('autoTypeToggle');
-
-    mouseToggle.addEventListener('change', () => {
-      eel.toggle_mouse_control(mouseToggle.checked)().then(ret => {
-        // optional: reflect any return value
-      });
-    });
-
-    speechToggle.addEventListener('change', () => {
-      const val = speechToggle.checked;
-      eel.toggle_speech_control(val)().then(ret => {
-        speechStatus.innerText = "Microphone status: " + (ret ? "on" : "off");
-      });
-    });
-
-    autoTypeToggle.addEventListener('change', () => {
-      eel.toggle_auto_type(autoTypeToggle.checked)();
-    });
-
-    // poll for hand position and recognized text
-    setInterval(() => {
-      eel.get_hand_pos()(pos => {
-        if (pos.visible) {
-          handInfo.innerText = `x: ${pos.x}, y: ${pos.y} (visible)`;
-        } else {
-          handInfo.innerText = "No hand detected";
+        function toggleSpeech() {
+            speechOn = !speechOn;
+            eel.toggle_speech(speechOn);
+            document.getElementById("speech").innerHTML =
+                "Voice: <span class='badge'>" + (speechOn ? "ON" : "OFF") + "</span>";
         }
-      });
 
-      eel.get_recognized_text()(txt => {
-        if (txt) {
-          // put latest text in textarea (append)
-          recognizedArea.value = txt + "\n" + recognizedArea.value;
-          // keep a reasonable length
-          recognizedArea.value = recognizedArea.value.split("\n").slice(0,200).join("\n");
+        function toggleMouse() {
+            mouseOn = !mouseOn;
+            eel.toggle_mouse(mouseOn);
         }
-      });
-    }, 600);
-  </script>
+
+        async function update() {
+            let hand = await eel.get_hand()();
+            let text = await eel.get_text()();
+
+            document.getElementById("gesture").innerText =
+                "Gesture: " + hand.gesture;
+
+            document.getElementById("text").innerText =
+                "You said: " + text;
+
+            setTimeout(update, 100);
+        }
+
+        update();
+    </script>
+
 </body>
 </html>
